@@ -6,7 +6,7 @@ class Sponsors extends cpt_post_types_parent {
 public $cpt_name = "Sponsors";
 public $cpt_id = "sponsors";
 public $cpt_dashicon = "dashicons-businessman";
-public $public = false;
+public $public = false; 
 
 
 
