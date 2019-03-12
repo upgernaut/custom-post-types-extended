@@ -23,6 +23,8 @@ public function cpt_init() {
 	add_action( 'init', array($this,'customPostType_cpt_cpt_post_types_parent'));
 	add_action('admin_menu', array($this, 'create_meta_box'));	
 	add_action('save_post', array($this, 'save_postdata'));	
+
+	add_action( 'admin_enqueue_scripts', array($this, 'img_upload_script'), 10, 1 );
 	
 	
 	if(isset($this->taxonomies) && !empty($this->taxonomies)) {
@@ -96,11 +98,18 @@ public function customPostType_cpt_cpt_post_types_parent() {
         );
          
     // Set other options for Custom Post Type
+
+        if(isset($this->supports) && !empty($this->supports)) {
+        	$supports = $this->supports;
+        } else {
+        	$supports = array( 'title', 'custom-fields', 'editor', 'thumbnail' );
+        }
+
         $args = array(
             'label'               => __( $this->cpt_name, 'cpt' ),
             'description'         => __( $this->cpt_name, 'cpt' ),
             'labels'              => $labels,
-			'supports'            => array( 'title', 'custom-fields', 'editor', 'thumbnail' ),
+			'supports'            => $supports,
             'taxonomies'          => array(),
             'hierarchical'        => false,
             'public'              => $this->public,
@@ -153,7 +162,21 @@ public function new_meta_boxes() {
 			echo'<td><input type="text/number" name="'.$meta_box['name'].'" value="'.$meta_box_value.'" style="width: 100%;" /></td></tr>';
 			echo'</tbody></table>';
 			echo'<label for="'.$meta_box['name'].'">'.$meta_box['description'].'</label>';
-		}		
+		}	
+		else if(isset($meta_box['type']) && $meta_box['type'] == 'editor')
+		{
+			echo'<input type="hidden" name="'.$meta_box['name'].'_noncename" id="'.$meta_box['name'].'_noncename" value="'.wp_create_nonce( plugin_basename(__FILE__) ).'" />';
+			echo'<table width="100%"><tbody>';
+			echo'<tr><td align="right" style="width: 184px;"><strong>'.$meta_box['title'].' - </strong></td>';
+			echo'<td>';
+			wp_editor( $meta_box_value,$meta_box['name'], $settings = array('textarea_name' => $meta_box['name'], 'textarea_rows'=>5) );
+			echo'</td></tr>';
+			
+
+
+			echo'</tbody></table>';
+			echo'<label for="'.$meta_box['name'].'">'.$meta_box['description'].'</label>';		
+		}
 		else if(isset($meta_box['type']) && $meta_box['type'] == 'date')
 		{
 			echo'<input type="hidden" name="'.$meta_box['name'].'_noncename" id="'.$meta_box['name'].'_noncename" value="'.wp_create_nonce( plugin_basename(__FILE__) ).'" />';
@@ -172,6 +195,16 @@ public function new_meta_boxes() {
 			echo'<td><input type="checkbox" name="'.$meta_box['name'].'" value="1" '. $checked .' /></td></tr>';
 			echo'</tbody></table>';
 			echo'<label for="'.$meta_box['name'].'">'.$meta_box['description'].'</label>';		
+		}			
+		else if(isset($meta_box['type']) && $meta_box['type'] == 'media')
+		{
+			echo'<input type="hidden" name="'.$meta_box['name'].'_noncename" id="'.$meta_box['name'].'_noncename" value="'.wp_create_nonce( plugin_basename(__FILE__) ).'" />';
+			echo'<table width="100%"><tbody>';
+			echo'<tr><td align="right" style="width: 184px;"><strong>'.$meta_box['title'].' - </strong></td>';
+			echo'<td><input type="text" name="'.$meta_box['name'].'" value="'.$meta_box_value.'" style="width: 100%;" />            
+				<button class="button fileUploadField"  style=" display: inline-block;"  type="button" value="Upload Media" /><span style="display: inline-block; margin-top: 3px; " class="dashicons dashicons-upload"></span> Upload Media</button></td></tr>';
+			echo'</tbody></table>';
+			echo'<label for="'.$meta_box['name'].'">'.$meta_box['description'].'</label>';
 		}
 		else if(isset($meta_box['type']) && $meta_box['type'] == 'dropdown')
 		{
@@ -406,14 +439,34 @@ function show_taxonomy() {
 	}
 
 
+
+	function img_upload_script( $hook ) {
+
+	    global $post;
+		
+		// Sometimes you need to add this, for example in plugins where media is not being called
+		//wp_enqueue_media();
+
+	    // General settings pdf
+
+	    if ( $hook == 'post.php' || $hook == 'post-new.php' ) {
+
+	        wp_enqueue_script(  'img_upload', get_stylesheet_directory_uri().'/includes/image-upload.js' );
+
+	    } 
+
+	}
+
+
 	// Custom page for custom post type
 	/**
 	 * Register page settings submenu
 	 */
 	public function cpt_submenu() {
+		wp_enqueue_editor();	
 	 
 	   // Add the menu to the existing tab
-	   $page = add_submenu_page( 'edit.php?post_type='.$this->cpt_id, __( 'Content', 'theme' ), __( 'Content', 'theme' ), 'edit_posts', 'cpt-'.$this->cpt_id.'-content', array($this, 'cpt_content_page') );
+	   $page = add_submenu_page( 'edit.php?post_type='.$this->cpt_id, __( 'Settings', 'theme' ), __( '<span class="dashicons dashicons-admin-generic"></span> Settings', 'theme' ), 'edit_posts', 'cpt-'.$this->cpt_id.'-content', array($this, 'cpt_content_page') );
 	 
 	   // For loading the page so the submitted data can be saved
 	   add_action( 'load-' . $page, array($this, 'cpt_content_page_load')  );
@@ -422,12 +475,12 @@ function show_taxonomy() {
 
 
 	public function cpt_content_page() { 
-
+wp_enqueue_editor();	
 		?>
 	 
 	    <div class="wrap">
 	 
-	        <h2><?php echo $this->cpt_name; ?> settings</h2>
+	        <h2><span class="dashicons dashicons-admin-generic"></span> <?php echo $this->cpt_name; ?> settings</h2>
 	 
 	        <?php
 	        if ( isset( $_GET['updated'] ) && esc_attr( $_GET['updated'] ) == 'true' )
@@ -438,6 +491,7 @@ function show_taxonomy() {
 	 
 	            <table class="form-table">
 
+
 					<?php foreach($this->options as $option): ?>
 						<?php if($option['type'] == 'input'): ?>
 			                <tr>
@@ -447,7 +501,9 @@ function show_taxonomy() {
 						<?php elseif($option['type'] == 'editor'): ?>
 			                <tr>
 			                    <th><label for="<?php echo $this->cpt_id; ?>_<?php echo $option['name']; ?>"><?php echo $option['title']; ?>:</label></th>
-			                    <td><?php wp_editor( $this->cpt_custom_content( $this->cpt_id, $option['name'] ), $this->cpt_id . '_' .$option['name'], ['textarea_name' => 'data['.$option['name'].']'] ); ?></td>
+			                    <td>
+
+            	<?php wp_editor( $this->cpt_custom_content( $this->cpt_id, $option['name'] ), $this->cpt_id . '_' .$option['name'], $settings = array('textarea_name' => 'data['.$option['name'].']', 'textarea_rows'=>5) );  ?></td>
 			                   
 			                </tr>							
 						<?php endif; ?>

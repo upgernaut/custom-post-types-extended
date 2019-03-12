@@ -24,15 +24,9 @@ function __construct(){
 		"description" => array(
 			"name" => "description",
 			"std" => "",
-			"type"=>"input",
+			"type"=>"editor",
 			"title" => "Description",
 			"description" => "<div style='padding:0 0 10px 190px;'>Enter customer description.</div>"),
-		"sometext" => array(
-			"name" => "sometext",
-			"std" => "",
-			"type"=>"editor",
-			"title" => "sometextv",
-			"description" => "<div style='padding:0 0 10px 190px;'>Enter customer sometext.</div>"),
 	);	
 	
 	$this->meta_boxes = array(		
